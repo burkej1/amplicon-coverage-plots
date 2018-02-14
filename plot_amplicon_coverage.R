@@ -10,7 +10,7 @@ library(colorspace) # For generating colourspaces for rowside annotation
 source("amplicon_coverage_functions.R")  # This may not work depending on the R working directory
 
 
-# Input file (should write to take a command line input)
+# Input file (should rewrite to take a command line input)
 amplicon_metrics <- read_delim("/Users/Jared/Documents/Code/amplicon-coverage-plots/run1-7_amplicon_metrics_all.tsv", 
                                "\t", escape_double = FALSE, col_names = FALSE, 
                                trim_ws = TRUE)
@@ -20,23 +20,28 @@ colnames(amplicon_metrics) <- headers
 plotdata <- amplicon_metrics[,c("amplicon_f", "sample", "reads")]  # Subset dataframe
 
 # # # # # # # # Overall plots # # # # # # # # 
-# Creating matrices for all plot
+# NOTE: Should colour the all plot rows by gene
+# Creating matrices for overall plot
 plotdata_all <- to_heatmap_matrix(plotdata, FALSE)
 full_hovertext <- generate_hoverframe(plotdata_all)  # Overlay matrix
 all_plot_colourscale <- create_plot_colourscale(max(gene_subset), c(50, 100, 200, 500, 1000), viridis_pal()(6))
 
-# Factored vectors of plate numbers (used for all heatmaps)
+# Factored vectors of plate numbers (used for all heatmaps) and gene names (used for the overall heatmaps)
 plate_vector <- data.frame(factor(gsub("^.+?_.+?_([0-9]+)-.+", "\\1", colnames(plotdata_all))))  # Coerced vector to df to add label
 colnames(plate_vector) <- "Plate Number"
+gene_names_vector <- data.frame(factor(gsub("_.+_.+", "", row.names(plotdata_all))))
+colnames(gene_names_vector) <- "Gene"
 
-all_heatmap <- heatmaply(plotdata_all,
+
+all_heatmap <- heatmaply(plotdata_all, 
                          main = "All - Depth", 
                          fontsize_col = 8,
                          fontsize_row = 8,
                          hide_colorbar = TRUE, 
                          scale_fill_gradient_fun = all_plot_colourscale,
                          col_side_colors = plate_vector, 
-                         file = "all_coverage.html",
+                         row_side_colors = gene_names_vector, 
+                         file = "coverage_all.html",
                          margins = c(200, 150),
                          custom_hovertext = full_hovertext)
 
@@ -52,7 +57,8 @@ all_heatmap_amplicon_norm <- heatmaply(plotdata_all_amplicon_norm,
                                        hide_colorbar = TRUE, 
                                        scale_fill_gradient_fun = plotdata_all_amplicon_norm_colourscale,
                                        col_side_colors = plate_vector, 
-                                       file = "all_amplicon_normalised.html",
+                                       row_side_colors = gene_names_vector, 
+                                       file = "amplicon_normalised_all.html",
                                        margins = c(200, 150),
                                        custom_hovertext = full_hovertext)
 
@@ -68,7 +74,8 @@ all_heatmap_sample_norm <- heatmaply(plotdata_all_sample_norm,
                                      hide_colorbar = TRUE, 
                                      scale_fill_gradient_fun = plotdata_all_sample_norm_colourscale,
                                      col_side_colors = plate_vector, 
-                                     file = "all_sample_normalised.html",
+                                     row_side_colors = gene_names_vector, 
+                                     file = "sample_normalised_all.html",
                                      margins = c(200, 150),
                                      custom_hovertext = full_hovertext)
 
