@@ -7,7 +7,7 @@ library(heatmaply)  # Interactive heatmaps
 library(scales)  # Rescaling scales
 library(colorspace) # For generating colourspaces for rowside annotation
 
-source("amplicon_coverage_functions.R")
+source("amplicon_coverage_functions.R")  # This may not work depending on the R working directory
 
 
 # Input file (should write to take a command line input)
@@ -18,8 +18,8 @@ amplicon_metrics <- read_delim("/Users/Jared/Documents/Code/amplicon-coverage-pl
 headers <- c("chrom", "start", "end", "amplicon_f", "amplicon_r", "reads", "bases_c", "len", "pct", "sample")
 colnames(amplicon_metrics) <- headers
 plotdata <- amplicon_metrics[,c("amplicon_f", "sample", "reads")]  # Subset dataframe
-# plotdata <- plotdata[1:2386,]  # Subsetting for testing purposes
 
+# # # # # # # # Overall plots # # # # # # # # 
 # Creating matrices for all plot
 plotdata_all <- to_heatmap_matrix(plotdata, FALSE)
 full_hovertext <- generate_hoverframe(plotdata_all)  # Overlay matrix
@@ -72,6 +72,8 @@ all_heatmap_sample_norm <- heatmaply(plotdata_all_sample_norm,
                                      margins = c(200, 150),
                                      custom_hovertext = full_hovertext)
 
+
+# # # # # # # # Gene plots # # # # # # # # 
 # Extract the gene names from the amplicons and create a heatmap for each gene
 gene_names <- unique(gsub("_.+_.+", "", plotdata$amplicon_f))
 for (gene in gene_names) {
