@@ -1,13 +1,22 @@
 # Functions used in amplicon coverage plotting
 
+# Function to create colour scales based on the max value on the given plot
+create_plot_colourscale <- function(maxvalue) {
+  colourbreaks <- rescale(c(0, 50, 51, 100, 101, 200, 201, 1000, 1001, maxvalue), to = c(0, 1), from = c(0, maxvalue))
+  colourscale <- rep(viridis_pal()(5), each = 2)
+  # colourscale <- c("black", colourscale)
+  colourfunction <- scale_fill_gradientn(colors = colourscale, values = colourbreaks)
+  return(colourfunction)
+}
+
 # Function to restructure a dataframe for heatmap plotting (note: will throw an error with a single sample)
-to_heatmap_matrix <- function(df, replace = FALSE, highvalue = 1000, lowvalue = 0) {
+to_heatmap_matrix <- function(df, replace = FALSE, highvalue = 1000, lowvalue = 0, lowfloor = 0) {
   df_restructure <- dcast(df, amplicon_f~sample, fill=0)
   fix_rownames <- df_restructure[,-1]
   rownames(fix_rownames) <- df_restructure[,1]
   if (replace == TRUE) {
     fix_rownames <- replace(fix_rownames, fix_rownames > highvalue, highvalue)
-    fix_rownames <- replace(fix_rownames, fix_rownames < lowvalue, lowvalue)
+    fix_rownames <- replace(fix_rownames, fix_rownames < lowvalue, lowfloor)
   }
   return(data.matrix(fix_rownames))
 }
