@@ -1,5 +1,6 @@
 # Functions used in amplicon coverage plotting
-
+breaks = c(50, 100, 200, 1000)
+maxvalue = 10000
 create_plot_colourscale <- function(maxvalue, breaks = c(50, 100, 200, 1000), colours = viridis_pal()(5)) {
   # Creates colour scales based on the given max value, breaks and colour palette.
   # Currently 0 is assumed to be the start of the scale. Number of colours supplied should be equal to n of breaks + 1.

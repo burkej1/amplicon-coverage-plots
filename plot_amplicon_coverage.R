@@ -20,18 +20,22 @@ colnames(amplicon_metrics) <- headers
 plotdata <- amplicon_metrics[,c("amplicon_f", "sample", "reads")]  # Subset dataframe
 
 # # # # # # # # Overall plots # # # # # # # # 
-# NOTE: Should colour the all plot rows by gene
 # Creating matrices for overall plot
 plotdata_all <- to_heatmap_matrix(plotdata, FALSE)
 full_hovertext <- generate_hoverframe(plotdata_all)  # Overlay matrix
-all_plot_colourscale <- create_plot_colourscale(max(gene_subset), c(50, 100, 200, 500, 1000), viridis_pal()(6))
+all_plot_colourscale <- create_plot_colourscale(max(plotdata_all), c(50, 100, 200, 500, 1000), viridis_pal()(6))
+
+library(graphics)
+colourpalette <- viridis_pal()(6)
+colourmatrix <- matrix(data = 1:6, nrow = 1, ncol = 6)
+image(z = colourmatrix, col = colourpalette)
+        
 
 # Factored vectors of plate numbers (used for all heatmaps) and gene names (used for the overall heatmaps)
 plate_vector <- data.frame(factor(gsub("^.+?_.+?_([0-9]+)-.+", "\\1", colnames(plotdata_all))))  # Coerced vector to df to add label
 colnames(plate_vector) <- "Plate Number"
 gene_names_vector <- data.frame(factor(gsub("_.+_.+", "", row.names(plotdata_all))))
 colnames(gene_names_vector) <- "Gene"
-
 
 all_heatmap <- heatmaply(plotdata_all, 
                          main = "All - Depth", 
@@ -79,6 +83,7 @@ all_heatmap_sample_norm <- heatmaply(plotdata_all_sample_norm,
                                      margins = c(200, 150),
                                      custom_hovertext = full_hovertext)
 
+cat(paste("All - Sample Normalised", "0-50 | 50-100 | 100-200 | 200-500 | 500-1000 | 1000+", sep = "\n"))
 
 # # # # # # # # Gene plots # # # # # # # # 
 # Extract the gene names from the amplicons and create a heatmap for each gene
@@ -96,7 +101,7 @@ for (gene in gene_names) {
   plotname <- paste(gene, "_coverage.html", sep="")
   plot_colourscale <- create_plot_colourscale(max(gene_subset), c(50, 100, 200, 500, 1000), viridis_pal()(6))
   geneplot <- heatmaply(gene_subset, 
-                        main = paste(gene, "- Depth"), 
+                        main = paste(paste(gene, "- Depth"), "0-50 | 50-100 | 100-200 | 200-500 | 500-1000 | 1000+", sep = "\n"), 
                         hide_colorbar = TRUE,
                         fontsize_col = 8, 
                         fontsize_row = 8, 
