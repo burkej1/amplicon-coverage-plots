@@ -14,6 +14,7 @@ create_plots <- function(df, basename) {
   # Creating colour scale
   depth_plot_colourscale <- create_plot_colourscale(max(df), c(50, 100, 200, 500, 1000), viridis_pal()(6))
   depth_plot_colourscale_na <- create_plot_colourscale(max(df), c(1, 50, 100, 200, 500, 1000), c("white", viridis_pal()(6)))
+  depth_plot_colourscale_continuous_capped <- create_plot_colourscale(max(df), c(1000), viridis_pal()(2))
                                                        
   # Creating the depth heatmap
   depth_heatmap <- heatmaply(df, 
@@ -21,7 +22,7 @@ create_plots <- function(df, basename) {
                              fontsize_col = 8,
                              fontsize_row = 8,
                              hide_colorbar = TRUE,
-                             scale_fill_gradient_fun = depth_plot_colourscale_na,
+                             # scale_fill_gradient_fun = depth_plot_colourscale_na,
                              col_side_colors = plate_vector,
                              row_side_colors = gene_names_vector,
                              file = paste("coverage_", basename, ".html", sep=""),
@@ -42,7 +43,7 @@ create_plot_colourscale <- function(maxvalue, breaks = c(50, 100, 200, 1000), co
 to_heatmap_matrix <- function(df, replace = FALSE, highvalue = 1000, lowvalue = 0, lowfloor = 0) {
   # Function to restructure a dataframe for heatmap plotting (note: will throw an error with a single sample)
   df_restructure <- dcast(df, amplicon_f~sample, fill=0)
-  fix_rownames <- df_restructure[,-1]
+  fix_rownames <- df_restructure[,-1, drop=FALSE]
   rownames(fix_rownames) <- df_restructure[,1]
   if (replace == TRUE) {
     fix_rownames <- replace(fix_rownames, fix_rownames > highvalue, highvalue)

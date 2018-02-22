@@ -6,14 +6,17 @@ library(reshape2)  # For manipulating dataframes/matrices I think
 library(heatmaply)  # Interactive heatmaps
 library(scales)  # Rescaling scales
 library(colorspace) # For generating colourspaces for rowside annotation
-library(htmlwidgets)  # For saving non-self-contained plots
 
 
-source("amplicon_coverage_functions.R")  # This may not work depending on the R working directory
+# source("amplicon_coverage_functions.R")  # This may not work depending on the R working directory
 
+# # Manual input file paths
+# inputpath <- "/Users/Jared/Documents/Project_Results_and_Data/BSTP/run1-7_amplicon_coverage_plotting/run1-7_amplicon_metrics_clean_190218.txt"
+inputpath <- "/Users/Jared/Documents/Jobs/CONFIRM_PROSTRAP_test_plotting/amplicon_metrics_files/CNFRM-column_S3_L001.amplicon-metrics.txt"
+# inputpath <- "/Users/Jared/Documents/Jobs/CONFIRM_PROSTRAP_test_plotting/amplicon_metrics_files/PSTP-column_S2_L001.amplicon-metrics.txt"
 
 # Input file (should rewrite to take a command line input)
-amplicon_metrics <- read_delim("/Users/Jared/Documents/Project_Results_and_Data/BSTP/run1-7_amplicon_coverage_plotting/run1-7_amplicon_metrics_clean_190218.txt", 
+amplicon_metrics <- read_delim(inputpath, 
                                "\t", escape_double = FALSE, col_names = FALSE, 
                                trim_ws = TRUE)
 
@@ -27,12 +30,24 @@ plotdata_all <- to_heatmap_matrix(plotdata, FALSE)  # Needed for other plot stuf
 # full_hovertext <- generate_hoverframe(plotdata_all)  # Overlay matrix
 # all_plot_colourscale <- create_plot_colourscale(max(plotdata_all), c(50, 100, 200, 500, 1000), viridis_pal()(6))
 
+# # Plotting single samples
+# Clustering function throws a fit with a single column dataframe (understandably) expanding the df to avoid this
+plotdata_all_expanded <- cbind(plotdata_all, plotdata_all)
+colnames(plotdata_all_expanded)[2] <- c("X")
+create_plots(plotdata_all_expanded, "CONFIRM")
+
 
 # Factored vectors of plate numbers (used for all heatmaps) and gene names (used for the overall heatmaps)
-plate_vector <- data.frame(factor(gsub("^.+?_.+?_([0-9]+)-.+", "\\1", colnames(plotdata_all))))  # Coerced vector to df to add label
+plate_vector <- data.frame(factor(gsub("^.+?_(.+?_[0-9]+)-.+", "\\1", colnames(plotdata_all))))  # Coerced vector to df to add label
 colnames(plate_vector) <- "Plate Number"
 gene_names_vector <- data.frame(factor(gsub("_.+_.+", "", row.names(plotdata_all))))
 colnames(gene_names_vector) <- "Gene"
+
+# # Counting the occurrences of each plate (exploring something weird)
+# library(plyr)
+# pv_temp <- data.frame(factor(gsub("^.+?_(.+?_[0-9]+)-.+", "\\1", colnames(plotdata_all))))
+# colnames(pv_temp) <- c("a")
+# dup_count <- ddply(pv_temp, .(a), nrow)
 
 # all_heatmap <- heatmaply(plotdata_all, 
 #                          main = "All - Depth", 
@@ -89,9 +104,17 @@ create_plots(plotdata_all_sampled, "subsample")
 
 # Plate specific subsampling
 unique_plates <- unique(plate_vector[,1])
+print(unique_plates)
+rm("plate_subsample_all")
 for (plate in unique_plates) {
   plate_grep <- paste("_", plate, "-", sep="")
   plate_subset <- plotdata_all[,grep(plate_grep, colnames(plotdata_all))]
+  plate_subset_subsample <- plate_subset[, sample(ncol(plate_subset), 3)]
+  if (exists("plate_subsample_all")) {
+    plate_subsample_all <- cbind(plate_subsample_all, plate_subset_subsample)
+  } else {
+    plate_subsample_all <- plate_subset_subsample
+  }
 }
 
 # # # # # # # # Gene plots # # # # # # # # 
