@@ -1,54 +1,107 @@
 # Functions used in amplicon coverage plotting
 
-create_plots <- function(df, basename) {
+create_plots <- function(df, basename, singlegene = FALSE, colourmode = "discrete_na", plot_type = "depth") {
   # Creates plots from the given dataframe using a bunch of defaults
-  # Creating side annotation dataframes
-  plate_vector <- data.frame(factor(gsub("^.+?_.+?_([0-9]+)-.+", "\\1", colnames(df))))  # Coerced vector to df to add label
+  # Creating side annotation dataframes (plate number extraction specific to BRASTRAP)
+  plate_vector <- data.frame(factor(gsub("^.+?_(.+?_[0-9]+)-.+", "\\1", colnames(df))))  # Coerced vector to df to add label
   colnames(plate_vector) <- "Plate Number"
-  gene_names_vector <- data.frame(factor(gsub("_.+_.+", "", row.names(df))))
-  colnames(gene_names_vector) <- "Gene"
+  
+  if (singlegene == TRUE) {
+    # If a single gene is being plotted colour the rows by exon
+    row_vector <- data.frame(factor(gsub("^.+?_(.+)_.+", "\\1", row.names(df))))
+    colnames(row_vector) <- "Exon"
+  } else {
+    # Otherwise colour the rows by gene
+    row_vector <- data.frame(factor(gsub("_.+_.+", "", row.names(df))))
+    colnames(row_vector) <- "Gene"
+  }
   
   # Creating hovertext
   plot_hovertext <- generate_hoverframe(df)
   
-  # Creating colour scale
-  depth_plot_colourscale <- create_plot_colourscale(max(df), c(50, 100, 200, 500, 1000), viridis_pal()(6))
-  depth_plot_colourscale_na <- create_plot_colourscale(max(df), c(1, 50, 100, 200, 500, 1000), c("white", viridis_pal()(6)))
-  depth_plot_colourscale_continuous_capped <- create_plot_colourscale(max(df), c(1000), viridis_pal()(2))
-                                                       
-  # Creating the depth heatmap
-  depth_heatmap <- heatmaply(df, 
-                             main = paste(basename, "- Depth"), 
-                             fontsize_col = 8,
-                             fontsize_row = 8,
-                             hide_colorbar = TRUE,
-                             # scale_fill_gradient_fun = depth_plot_colourscale_na,
-                             col_side_colors = plate_vector,
-                             row_side_colors = gene_names_vector,
-                             file = paste("coverage_", basename, ".html", sep=""),
-                             margins = c(200, 150),
-                             custom_hovertext = plot_hovertext)
+  if (plot_type == "depth" || plot_type == "all") {
+    # Creating colour scale
+    if (colourmode == "discrete_na") {
+      # Pseudo-discrete scale with white for 0 coverage
+      depth_plot_colourscale <- create_plot_colourscale(max(df), c(1, 50, 100, 200, 500, 1000), c("white", viridis_pal()(6)))
+    } else if (colourmode == "discrete") {
+      # Pseudo-discrete scale
+      depth_plot_colourscale <- create_plot_colourscale(max(df), c(50, 100, 200, 500, 1000), viridis_pal()(6))
+    } else if (colourmode == "continuous") {
+      # Continuous colourscale
+      depth_plot_colourscale <- create_plot_colourscale(max(df), c(100, 200, 300, 400, 500, 600, 700, 800, 900, 1000), 
+                                                                          viridis_pal()(11), type = "continuous")
+    }
+    # Creating the depth heatmap
+    depth_heatmap <- heatmaply(df, 
+                               main = paste(basename, "- Depth"), 
+                               fontsize_col = 8,
+                               fontsize_row = 8,
+                               hide_colorbar = TRUE,
+                               scale_fill_gradient_fun = depth_plot_colourscale,
+                               col_side_colors = plate_vector,
+                               row_side_colors = row_vector,
+                               file = paste("coverage_", basename, ".html", sep=""),
+                               margins = c(200, 150),
+                               custom_hovertext = plot_hovertext)
+  }
+  if (plot_type == "amplicon_norm" || plot_type == "all") {
+    ampnorm_plotname <- paste(basename, "_amplicon-normalised_coverage.html", sep="")
+    ampnorm_matrix <- normalize_matrix(df, by = "amplicon")
+    ampnorm_colourscale <- create_plot_colourscale(max(ampnorm_matrix), breaks = c(0.5, 1.0, 1.5, 2.0), colours = viridis_pal()(5))
+    geneplot_ampnorm <- heatmaply(ampnorm_matrix,
+                                  main = paste(basename, "- Amplicon Normalised"),
+                                  hide_colorbar = TRUE,
+                                  fontsize_col = 8,
+                                  fontsize_row = 8,
+                                  scale_fill_gradient_fun = ampnorm_colourscale,
+                                  col_side_colors = plate_vector,
+                                  row_side_colors = row_vector,
+                                  margins = c(200, 150),
+                                  file = ampnorm_plotname,
+                                  custom_hovertext = plot_hovertext)
+  }
+  if (plot_type == "sample_norm" || plot_type == "all") {
+    sampnorm_plotname <- paste(basename, "_sample-normalised_coverage.html", sep="")
+    sampnorm_matrix <- normalize_matrix(df, by = "sample")
+    sampnorm_colourscale <- create_plot_colourscale(max(sampnorm_matrix), breaks = c(0.5, 1.0, 1.5, 2.0), colours = viridis_pal()(5))
+    geneplot_sampnorm <- heatmaply(sampnorm_matrix,
+                                   main = paste(basename, "- Sample Normalised"),
+                                   hide_colorbar = TRUE,
+                                   fontsize_col = 8,
+                                   fontsize_row = 8,
+                                   scale_fill_gradient_fun = sampnorm_colourscale,
+                                   col_side_colors = plate_vector,
+                                   row_side_colors = row_vector,
+                                   margins = c(200, 150),
+                                   file = sampnorm_plotname,
+                                   custom_hovertext = plot_hovertext)
+  }
 }
 
-create_plot_colourscale <- function(maxvalue, breaks = c(50, 100, 200, 1000), colours = viridis_pal()(5)) {
+create_plot_colourscale <- function(maxvalue, breaks = c(50, 100, 200, 1000), colours = viridis_pal()(5), type = "discrete") {
   # Creates colour scales based on the given max value, breaks and colour palette.
-  # Currently 0 is assumed to be the start of the scale. Number of colours supplied should be equal to n of breaks + 1.
-  breaks_formatted <- unlist(lapply(breaks, function(x) c(x, x + 0.0001)))
-  colourbreaks <- rescale(c(0, breaks_formatted, maxvalue), to = c(0, 1), from = c(0, maxvalue))
-  colourscale <- rep(colours, each = 2)
-  colourfunction <- scale_fill_gradientn(colors = colourscale, values = colourbreaks)
+  if (type == "discrete") {
+    # Creates a pseudo discrete continuous scale from the given breaks
+    # Currently 0 is assumed to be the start of the scale. Number of colours supplied should be equal to n of breaks + 1.
+    breaks_formatted <- unlist(lapply(breaks, function(x) c(x, x + 0.0001)))
+    colourbreaks <- rescale(c(0, breaks_formatted, maxvalue), to = c(0, 1), from = c(0, maxvalue))
+    colourscale <- rep(colours, each = 2)
+    colourfunction <- scale_fill_gradientn(colors = colourscale, values = colourbreaks)
+  } else if (type == "continuous") {
+    # Creates a continous scale capped at the final break
+    colourbreaks <- rescale(c(0, breaks, maxvalue), to = c(0, 1), from = c(0, maxvalue))
+    colourscale <- c(colours, tail(colours, n=1))
+    colourfunction <- scale_fill_gradientn(colors = colourscale, values = colourbreaks)
+  }
   return(colourfunction)
 }
 
-to_heatmap_matrix <- function(df, replace = FALSE, highvalue = 1000, lowvalue = 0, lowfloor = 0) {
-  # Function to restructure a dataframe for heatmap plotting (note: will throw an error with a single sample)
+to_heatmap_matrix <- function(df) {
+  # Function to restructure a dataframe for heatmap plotting
   df_restructure <- dcast(df, amplicon_f~sample, fill=0)
-  fix_rownames <- df_restructure[,-1, drop=FALSE]
+  fix_rownames <- df_restructure[,-1, drop=FALSE]  # Drop option allows it to work with single samples
   rownames(fix_rownames) <- df_restructure[,1]
-  if (replace == TRUE) {
-    fix_rownames <- replace(fix_rownames, fix_rownames > highvalue, highvalue)
-    fix_rownames <- replace(fix_rownames, fix_rownames < lowvalue, lowfloor)
-  }
   return(data.matrix(fix_rownames))
 }
 
